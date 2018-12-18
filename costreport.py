@@ -1,47 +1,51 @@
 import boto3
 import datetime
+from var import *
 
 costexplorer = boto3.client('ce')
+auth = boto3.client('sts')
 
 now = datetime.datetime.utcnow()
+start = (now - datetime.timedelta(days=61)).strftime('%Y-%m-%d')
+end = (now - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
 
+response = auth.assume_role(
+    RoleArn=arn,
+    RoleSessionName="assumerole"
+)
 
-
-response = costexplorer.get_cost_and_usage(
+ec2costresponse = costexplorer.get_cost_and_usage(
     TimePeriod={
-        'Start': 'string',
-        'End': 'string'
+        'Start': start,
+        'End': end
     },
-    Granularity='DAILY'|'MONTHLY'|'HOURLY',
+    Granularity='MONTHLY',
     Filter={
-        'Or': [
-            {'... recursive ...'},
-        ],
-        'And': [
-            {'... recursive ...'},
-        ],
-        'Not': {'... recursive ...'},
         'Dimensions': {
-            'Key': 'AZ'|'INSTANCE_TYPE'|'LINKED_ACCOUNT'|'OPERATION'|'PURCHASE_TYPE'|'REGION'|'SERVICE'|'USAGE_TYPE'|'USAGE_TYPE_GROUP'|'RECORD_TYPE'|'OPERATING_SYSTEM'|'TENANCY'|'SCOPE'|'PLATFORM'|'SUBSCRIPTION_ID'|'LEGAL_ENTITY_NAME'|'DEPLOYMENT_OPTION'|'DATABASE_ENGINE'|'CACHE_ENGINE'|'INSTANCE_TYPE_FAMILY'|'BILLING_ENTITY'|'RESERVATION_ID',
+            'Key': 'SERVICE',
             'Values': [
-                'string',
-            ]
-        },
-        'Tags': {
-            'Key': 'string',
-            'Values': [
-                'string',
+                'Amazon Elastic Compute Cloud - Compute',
             ]
         }
     },
-    Metrics=[
-        'string',
-    ],
-    GroupBy=[
-        {
-            'Type': 'DIMENSION'|'TAG',
-            'Key': 'string'
-        },
-    ],
-    NextPageToken='string'
+     Metrics=[
+         'BlendedCost',
+     ]
+    # GroupBy=[
+    #     {
+    #         'Type': 'DIMENSION'|'TAG',
+    #         'Key': 'string'
+    #     },
+    # ],
+    # NextPageToken='string'
 )
+
+if ec2costresponse.get("ResponseMetadata").get("HTTPStatusCode") == 200:
+    firsthalf = (ec2costresponse['ResultsByTime'][0]['Total']['BlendedCost']['Amount'])
+    secondhalf = (ec2costresponse['ResultsByTime'][1]['Total']['BlendedCost']['Amount'])
+    totalcost = float(firsthalf) + float(secondhalf)
+    print("Start Date: " + start)
+    print("End Date: " + end)
+    print("Total Cost: $" + str(int(totalcost)))
+else:
+    print(ec2costresponse.get("ResponseMetadata"))
