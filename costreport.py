@@ -2,24 +2,6 @@ import boto3
 import datetime
 from var import *
 
-costexplorer = boto3.client('ce')
-auth = boto3.client('sts')
-now = datetime.datetime.utcnow()
-start = (now - datetime.timedelta(days=61)).strftime('%Y-%m-%d')
-end = (now - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
-response = auth.assume_role(
-    RoleArn=arn,
-    RoleSessionName="assumerole"
-)
-print("Start Date: " + start)
-print("End Date: " + end)
-global allprojectscostlist
-allprojectscostlist = []
-global allteamcostlist
-allteamcostlist = []
-global keys
-keys = ["team", "project"]
-
 
 def get_valid_tags():
     global teamvalues
@@ -85,7 +67,6 @@ def get_cost(tag_name, tag_value):
 
         totalcost = float(firsthalf) + float(secondhalf)
 
-
         if tag_name == "team":
             print("Total Cost of RDS for " + tv + " team: $ " + str(int(totalcost)))
         elif tag_name == "project":
@@ -96,6 +77,25 @@ def get_cost(tag_name, tag_value):
         print(ec2costresponse.get("ResponseMetadata"))
 
 
+costexplorer = boto3.client('ce')
+auth = boto3.client('sts')
+now = datetime.datetime.utcnow()
+start = (now - datetime.timedelta(days=61)).strftime('%Y-%m-%d')
+end = (now - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+response = auth.assume_role(
+    RoleArn=arn,
+    RoleSessionName="assumerole"
+)
+global allprojectscostlist
+allprojectscostlist = []
+global allteamcostlist
+allteamcostlist = []
+global keys
+keys = ["team", "project"]
+
+print("Start Date: " + start)
+print("End Date: " + end)
+
 get_valid_tags()
 
 for tn in keys:
@@ -105,7 +105,6 @@ for tn in keys:
     elif tn == "project":
         for tv in projectvalues:
             allprojectscostlist.append(get_cost(tn, tv))
-
 
 allteamcost = sum(allteamcostlist)
 allprojectcost = sum(allprojectscostlist)
